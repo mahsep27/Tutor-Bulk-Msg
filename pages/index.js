@@ -564,11 +564,11 @@ export default function Home() {
           <div className="tutor-list">
             {loading && (
               Array.from({length: 8}).map((_, i) => (
-                <div key={i} className="tutor-item" style={{cursor:'default'}}>
+                <div key={i} className="tutor-item" style={{cursor:"default"}}>
                   <div className="skeleton" style={{width:18,height:18,borderRadius:4,flexShrink:0}} />
-                  <div style={{flex:1,display:'flex',flexDirection:'column',gap:5}}>
-                    <div className="skeleton" style={{height:14,width:`${55+Math.random()*30}%`}} />
-                    <div className="skeleton" style={{height:11,width:'40%'}} />
+                  <div style={{flex:1,display:"flex",flexDirection:"column",gap:5}}>
+                    <div className="skeleton" style={{height:14,width:["70%","55%","80%","65%","75%","60%","85%","50%"][i]}} />
+                    <div className="skeleton" style={{height:11,width:"40%"}} />
                   </div>
                 </div>
               ))

@@ -11,8 +11,10 @@ export default function Home() {
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     fetchTutors();
   }, []);
 
@@ -95,6 +97,8 @@ export default function Home() {
     setResults(null);
     setError(null);
   }
+
+  if (!mounted) return null;
 
   return (
     <>

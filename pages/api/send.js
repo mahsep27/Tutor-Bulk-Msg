@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
     // Normalize phone number — strip spaces, dashes, parentheses
     // WaSender expects international format without + e.g. 923001234567
-    const normalizedPhone = phone.replace(/[^0-9]/g, '');
+    const normalizedPhone = '+' + phone.replace(/[^0-9]/g, '');
 
     try {
       const response = await fetch('https://wasenderapi.com/api/send-message', {
@@ -37,8 +37,8 @@ export default async function handler(req, res) {
           'Authorization': `Bearer ${WASENDER_API_KEY}`,
         },
         body: JSON.stringify({
-          phone: normalizedPhone,
-          message: message.trim(),
+          to: normalizedPhone,
+          text: message.trim(),
         }),
       });
 

@@ -55,8 +55,9 @@ export default async function handler(req, res) {
       results.push({ name, phone, status: 'failed', error: err.message });
     }
 
-    // Small delay between messages to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 300));
+    // Random delay 3-6s between messages to avoid WhatsApp spam detection
+    const delay = 3000 + Math.floor(Math.random() * 3000);
+    await new Promise(resolve => setTimeout(resolve, delay));
   }
 
   const successCount = results.filter(r => r.status === 'sent').length;

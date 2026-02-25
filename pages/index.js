@@ -12,6 +12,8 @@ export default function Home() {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [manualInput, setManualInput] = useState('');
+  const [manualError, setManualError] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -58,12 +60,34 @@ export default function Home() {
     );
   });
 
-  async function handleSend() {
-    if (selected.size === 0) return alert('Please select at least one tutor.');
-    if (!message.trim()) return alert('Please enter a message.');
+  function parseManualNumbers() {
+    // Split by newlines or commas, trim each, filter empty
+    return manualInput
+      .split(/[\n,]/)
+      .map(n => n.trim())
+      .filter(n => n.length > 0);
+  }
 
+  function validateManualNumbers() {
+    const nums = parseManualNumbers();
+    const invalid = nums.filter(n => !n.startsWith('+'));
+    if (invalid.length > 0) {
+      setManualError(`These numbers must start with +: ${invalid.join(', ')}`);
+      return false;
+    }
+    setManualError('');
+    return true;
+  }
+
+  async function handleSend() {
+    const manualNums = parseManualNumbers();
+    if (selected.size === 0 && manualNums.length === 0) return alert('Please select at least one tutor or enter a number manually.');
+    if (!message.trim()) return alert('Please enter a message.');
+    if (manualNums.length > 0 && !validateManualNumbers()) return;
+
+    const totalCount = selected.size + manualNums.length;
     const confirmed = confirm(
-      `Send message to ${selected.size} tutor${selected.size > 1 ? 's' : ''}?\n\n"${message.trim()}"`
+      `Send message to ${totalCount} recipient${totalCount > 1 ? 's' : ''}?\n\n"${message.trim()}"`
     );
     if (!confirmed) return;
 
@@ -71,9 +95,13 @@ export default function Home() {
     setResults(null);
     setError(null);
 
-    const recipients = tutors
+    const fromList = tutors
       .filter(t => selected.has(t.id))
       .map(t => ({ name: t.name, phone: t.phone, tutorId: t.tutorId }));
+
+    const fromManual = manualNums.map(n => ({ name: n, phone: n, tutorId: '—' }));
+
+    const recipients = [...fromList, ...fromManual];
 
     try {
       const res = await fetch('/api/send', {
@@ -94,6 +122,8 @@ export default function Home() {
   function reset() {
     setSelected(new Set());
     setMessage('');
+    setManualInput('');
+    setManualError('');
     setResults(null);
     setError(null);
   }
@@ -457,6 +487,52 @@ export default function Home() {
         .result-status.sent { color: var(--success); }
         .result-status.failed { color: var(--danger); }
 
+        .manual-input-wrap {
+          position: relative;
+        }
+        .manual-textarea {
+          width: 100%;
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          color: var(--text);
+          padding: 12px 14px;
+          font-size: 14px;
+          font-family: 'DM Sans', sans-serif;
+          resize: none;
+          outline: none;
+          transition: border-color 0.15s;
+          line-height: 1.6;
+        }
+        .manual-textarea:focus { border-color: var(--accent); }
+        .manual-textarea::placeholder { color: var(--muted); }
+        .manual-textarea.has-error { border-color: var(--danger); }
+        .manual-hint {
+          font-size: 11px;
+          color: var(--muted);
+          margin-top: 6px;
+        }
+        .manual-error {
+          font-size: 12px;
+          color: var(--danger);
+          margin-top: 5px;
+        }
+        .divider {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: var(--muted);
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+        .divider::before, .divider::after {
+          content: '';
+          flex: 1;
+          height: 1px;
+          background: var(--border);
+        }
+
         .reset-btn {
           background: transparent;
           border: 1px solid var(--border);
@@ -629,6 +705,28 @@ export default function Home() {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="divider">or add numbers manually</div>
+
+          {/* Manual number input */}
+          <div>
+            <div className="section-label">Manual Numbers</div>
+            <div className="manual-input-wrap">
+              <textarea
+                className={`manual-textarea${manualError ? ' has-error' : ''}`}
+                placeholder={"+923001234567\n+923331234567\n\nOne per line or comma separated\nMust include country code e.g. +92"}
+                value={manualInput}
+                onChange={e => { setManualInput(e.target.value); setManualError(''); }}
+                rows={4}
+              />
+            </div>
+            {manualError ? (
+              <div className="manual-error">⚠ {manualError}</div>
+            ) : (
+              <div className="manual-hint">Numbers must start with + and include country code · One per line or comma separated · Spaces are removed automatically</div>
             )}
           </div>
 

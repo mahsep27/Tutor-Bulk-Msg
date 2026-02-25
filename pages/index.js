@@ -783,7 +783,7 @@ export default function Home() {
             <button
               className="send-btn"
               onClick={handleSend}
-              disabled={sending || selected.size === 0 || !message.trim()}
+              disabled={sending || (selected.size === 0 && manualInput.trim().length === 0) || !message.trim()}
             >
               {sending ? (
                 <>

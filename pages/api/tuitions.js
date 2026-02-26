@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const formula = encodeURIComponent("OR({Status} = "Approved", {Status} = "Engaged")");
+    const formula = encodeURIComponent(`OR({Status} = "Approved", {Status} = "Engaged")`);
     const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Tuitions?fields[]=Custom ID&fields[]=Tuition Ad (Bulk Tutor Msg)&fields[]=Status&filterByFormula=${formula}&sort[0][field]=Custom ID&sort[0][direction]=asc`;
 
     let allRecords = [];

@@ -14,6 +14,7 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [manualInput, setManualInput] = useState('');
   const [manualError, setManualError] = useState('');
+  const [progress, setProgress] = useState(null); // { current, total, results }
 
   useEffect(() => {
     setMounted(true);
@@ -104,14 +105,14 @@ export default function Home() {
     const recipients = [...fromList, ...fromManual];
 
     try {
-      const res = await fetch('/api/send', {
+      const res = await fetch('/api/start-send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipients, message: message.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to send');
-      setResults(data);
+      if (!res.ok) throw new Error(data.error || 'Failed to queue messages');
+      setResults({ queued: true, ...data });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -126,6 +127,7 @@ export default function Home() {
     setManualError('');
     setResults(null);
     setError(null);
+    setProgress(null);
   }
 
   if (!mounted) return null;
@@ -487,6 +489,45 @@ export default function Home() {
         .result-status.sent { color: var(--success); }
         .result-status.failed { color: var(--danger); }
 
+        .progress-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .progress-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 13px;
+        }
+        .progress-header .label { color: var(--muted); }
+        .progress-header .count { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; }
+        .progress-bar-track {
+          height: 6px;
+          background: var(--surface2);
+          border-radius: 99px;
+          overflow: hidden;
+        }
+        .progress-bar-fill {
+          height: 100%;
+          background: var(--accent);
+          border-radius: 99px;
+          transition: width 0.4s ease;
+        }
+        .progress-live-rows {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          max-height: 140px;
+          overflow-y: auto;
+        }
+        .progress-live-rows::-webkit-scrollbar { width: 3px; }
+        .progress-live-rows::-webkit-scrollbar-thumb { background: var(--border); }
+
         .manual-input-wrap {
           position: relative;
         }
@@ -748,28 +789,28 @@ export default function Home() {
             <div className="error-banner">⚠ {error}</div>
           )}
 
-          {/* Results card */}
-          {results && (
+          {/* Queued confirmation card */}
+          {results?.queued && (
             <div className="results-card">
-              <div className="results-summary">
-                <div className="stat">
-                  <div className={`stat-num green`}>{results.summary.sent}</div>
-                  <div className="stat-label">Sent</div>
+              <div style={{textAlign:'center', padding:'8px 0 4px'}}>
+                <div style={{fontSize:28, marginBottom:8}}>✅</div>
+                <div style={{fontFamily:'Syne, sans-serif', fontWeight:700, fontSize:16, marginBottom:4}}>
+                  {results.queued} message{results.queued !== 1 ? 's' : ''} queued
                 </div>
-                <div className="stat">
-                  <div className={`stat-num${results.summary.failed > 0 ? ' red' : ''}`}>{results.summary.failed}</div>
-                  <div className="stat-label">Failed</div>
+                <div style={{fontSize:13, color:'var(--muted)'}}>
+                  Sending in background · completes {results.estimatedCompletion}
                 </div>
-                <div className="stat">
-                  <div className="stat-num">{results.summary.total}</div>
-                  <div className="stat-label">Total</div>
+                <div style={{fontSize:12, color:'var(--muted)', marginTop:6}}>
+                  You can safely close this tab
                 </div>
               </div>
-              <div className="result-rows">
-                {results.results.map((r, i) => (
-                  <div key={i} className={`result-row ${r.status}`}>
+              <div className="result-rows" style={{marginTop:8}}>
+                {results.scheduled?.map((r, i) => (
+                  <div key={i} className={`result-row ${r.queued ? 'sent' : 'failed'}`}>
                     <span>{r.name}</span>
-                    <span className={`result-status ${r.status}`}>{r.status}</span>
+                    <span className={`result-status ${r.queued ? 'sent' : 'failed'}`}>
+                      {r.queued ? r.estimatedSendAt : 'queue failed'}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -777,8 +818,8 @@ export default function Home() {
           )}
 
           {/* Buttons */}
-          {results ? (
-            <button className="reset-btn" onClick={reset}>↺ Send Another Message</button>
+          {results?.queued ? (
+            <button className="reset-btn" onClick={reset}>↺ Send Another Batch</button>
           ) : (
             <button
               className="send-btn"
@@ -788,14 +829,19 @@ export default function Home() {
               {sending ? (
                 <>
                   <div className="spinner" />
-                  Sending {selected.size} message{selected.size > 1 ? 's' : ''}...
+                  Sending...
                 </>
               ) : (
                 <>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                     <path d="M14 2L7 9M14 2L9.5 14L7 9M14 2L2 6.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
-                  Send to {selected.size > 0 ? `${selected.size} tutor${selected.size > 1 ? 's' : ''}` : 'tutors'}
+                  {(() => {
+                    const manualCount = manualInput.trim() ? manualInput.split(/[
+,]/).filter(n => n.trim()).length : 0;
+                    const total = selected.size + manualCount;
+                    return total > 0 ? `Send to ${total} recipient${total > 1 ? 's' : ''}` : 'Send';
+                  })()}
                 </>
               )}
             </button>

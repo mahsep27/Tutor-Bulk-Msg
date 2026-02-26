@@ -12,6 +12,8 @@ export default function Home() {
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [tuitions, setTuitions] = useState([]);
+  const [selectedTuition, setSelectedTuition] = useState(null);
   const [manualInput, setManualInput] = useState('');
   const [manualError, setManualError] = useState('');
   const [progress, setProgress] = useState(null); // { current, total, results }
@@ -19,6 +21,7 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     fetchTutors();
+    fetchTuitions();
   }, []);
 
   async function fetchTutors() {
@@ -33,6 +36,16 @@ export default function Home() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchTuitions() {
+    try {
+      const res = await fetch('/api/tuitions');
+      const data = await res.json();
+      if (res.ok) setTuitions(data.tuitions);
+    } catch (err) {
+      console.error('Failed to load tuitions:', err);
     }
   }
 
@@ -83,12 +96,12 @@ export default function Home() {
   async function handleSend() {
     const manualNums = parseManualNumbers();
     if (selected.size === 0 && manualNums.length === 0) return alert('Please select at least one tutor or enter a number manually.');
-    if (!message.trim()) return alert('Please enter a message.');
+    if (!selectedTuition) return alert('Please select a Tuition ID.');
     if (manualNums.length > 0 && !validateManualNumbers()) return;
 
     const totalCount = selected.size + manualNums.length;
     const confirmed = confirm(
-      `Send message to ${totalCount} recipient${totalCount > 1 ? 's' : ''}?\n\n"${message.trim()}"`
+      `Send message to ${totalCount} recipient${totalCount > 1 ? 's' : ''}?\n\nTuition: ${selectedTuition.tuitionId}`
     );
     if (!confirmed) return;
 
@@ -108,7 +121,7 @@ export default function Home() {
       const res = await fetch('/api/start-send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipients, message: message.trim() }),
+        body: JSON.stringify({ recipients, message: selectedTuition.message }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to queue messages');
@@ -125,6 +138,7 @@ export default function Home() {
     setMessage('');
     setManualInput('');
     setManualError('');
+    setSelectedTuition(null);
     setResults(null);
     setError(null);
     setProgress(null);
@@ -558,6 +572,53 @@ export default function Home() {
           color: var(--danger);
           margin-top: 5px;
         }
+        .tuition-select-wrap {
+          position: relative;
+        }
+        .tuition-select {
+          width: 100%;
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          color: var(--text);
+          padding: 10px 14px;
+          font-size: 14px;
+          font-family: 'DM Sans', sans-serif;
+          outline: none;
+          cursor: pointer;
+          transition: border-color 0.15s;
+          appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 7L11 1' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 14px center;
+          padding-right: 36px;
+        }
+        .tuition-select:focus { border-color: var(--accent); }
+        .tuition-select option { background: var(--surface2); color: var(--text); }
+        .tuition-preview {
+          margin-top: 10px;
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          border-left: 3px solid var(--accent);
+          border-radius: 8px;
+          padding: 12px 14px;
+          font-size: 13px;
+          line-height: 1.6;
+          color: var(--text);
+          white-space: pre-wrap;
+          max-height: 140px;
+          overflow-y: auto;
+        }
+        .tuition-preview::-webkit-scrollbar { width: 3px; }
+        .tuition-preview::-webkit-scrollbar-thumb { background: var(--border); }
+        .preview-label {
+          font-size: 11px;
+          color: var(--muted);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          margin-bottom: 6px;
+        }
+
         .divider {
           display: flex;
           align-items: center;
@@ -771,17 +832,30 @@ export default function Home() {
             )}
           </div>
 
-          {/* Message box */}
+          {/* Tuition ID selector */}
           <div>
-            <div className="section-label">Message</div>
-            <textarea
-              className="msg-box"
-              placeholder="Type your message here..."
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              rows={7}
-            />
-            <div className="char-count">{message.length} chars</div>
+            <div className="section-label">Tuition ID</div>
+            <div className="tuition-select-wrap">
+              <select
+                className="tuition-select"
+                value={selectedTuition?.id || ''}
+                onChange={e => {
+                  const found = tuitions.find(t => t.id === e.target.value);
+                  setSelectedTuition(found || null);
+                }}
+              >
+                <option value="">— Select a Tuition ID —</option>
+                {tuitions.map(t => (
+                  <option key={t.id} value={t.id}>{t.tuitionId}</option>
+                ))}
+              </select>
+            </div>
+            {selectedTuition && (
+              <div>
+                <div className="preview-label" style={{marginTop:12}}>Message Preview</div>
+                <div className="tuition-preview">{selectedTuition.message}</div>
+              </div>
+            )}
           </div>
 
           {/* Error banner */}
@@ -824,7 +898,7 @@ export default function Home() {
             <button
               className="send-btn"
               onClick={handleSend}
-              disabled={sending || (selected.size === 0 && manualInput.trim().length === 0) || !message.trim()}
+              disabled={sending || (selected.size === 0 && manualInput.trim().length === 0) || !selectedTuition}
             >
               {sending ? (
                 <>
@@ -840,7 +914,7 @@ export default function Home() {
                     const manualCount = manualInput.trim() ? manualInput.split(/[
 ,]/).filter(n => n.trim()).length : 0;
                     const total = selected.size + manualCount;
-                    return total > 0 ? `Send to ${total} recipient${total > 1 ? 's' : ''}` : 'Send';
+                    return total > 0 ? `Send to ${total} recipient${total > 1 ? 's' : ''}` : 'Select tutors & tuition';
                   })()}
                 </>
               )}

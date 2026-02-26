@@ -118,14 +118,31 @@ export default function Home() {
     const recipients = [...fromList, ...fromManual];
 
     try {
-      const res = await fetch('/api/start-send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipients, message: selectedTuition.message }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to queue messages');
-      setResults({ queued: true, ...data });
+      if (recipients.length === 1) {
+        // Single recipient — call send-one directly, no QStash needed
+        const r = recipients[0];
+        const res = await fetch('/api/send-one', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: r.name, phone: r.phone, message: selectedTuition.message }),
+        });
+        const data = await res.json();
+        if (data.status === 'sent') {
+          setResults({ queued: false, summary: { total: 1, sent: 1, failed: 0 }, results: [data] });
+        } else {
+          setResults({ queued: false, summary: { total: 1, sent: 0, failed: 1 }, results: [data] });
+        }
+      } else {
+        // Multiple recipients — use QStash so browser can close
+        const res = await fetch('/api/start-send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipients, message: selectedTuition.message }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to queue messages');
+        setResults({ queued: true, ...data });
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -864,7 +881,8 @@ export default function Home() {
           )}
 
           {/* Queued confirmation card */}
-          {results?.queued && (
+          {/* Queued result (multiple recipients) */}
+          {results?.queued === true && (
             <div className="results-card">
               <div style={{textAlign:'center', padding:'8px 0 4px'}}>
                 <div style={{fontSize:28, marginBottom:8}}>✅</div>
@@ -891,8 +909,32 @@ export default function Home() {
             </div>
           )}
 
+          {/* Direct send result (single recipient) */}
+          {results?.queued === false && results.summary && (
+            <div className="results-card">
+              <div className="results-summary">
+                <div className="stat">
+                  <div className="stat-num green">{results.summary.sent}</div>
+                  <div className="stat-label">Sent</div>
+                </div>
+                <div className="stat">
+                  <div className={`stat-num${results.summary.failed > 0 ? ' red' : ''}`}>{results.summary.failed}</div>
+                  <div className="stat-label">Failed</div>
+                </div>
+              </div>
+              <div className="result-rows">
+                {results.results?.map((r, i) => (
+                  <div key={i} className={`result-row ${r.status}`}>
+                    <span>{r.name}</span>
+                    <span className={`result-status ${r.status}`}>{r.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Buttons */}
-          {results?.queued ? (
+          {results ? (
             <button className="reset-btn" onClick={reset}>↺ Send Another Batch</button>
           ) : (
             <button

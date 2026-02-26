@@ -15,6 +15,8 @@ export default function Home() {
   const [selectedTuition, setSelectedTuition] = useState(null);
   const [manualInput, setManualInput] = useState('');
   const [manualError, setManualError] = useState('');
+  const [tuitionSearch, setTuitionSearch] = useState('');
+  const [tuitionOpen, setTuitionOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -143,6 +145,10 @@ export default function Home() {
 
   if (!mounted) return null;
 
+  const filteredTuitions = tuitions.filter(t =>
+    t.tuitionId.toLowerCase().includes(tuitionSearch.toLowerCase())
+  );
+
   const manualNums = parseManualNumbers();
   const totalRecipients = selected.size + manualNums.length;
   const selectedTutorsList = tutors.filter(t => selected.has(t.id));
@@ -268,31 +274,48 @@ export default function Home() {
 
         .empty-msg { padding: 16px 14px; font-size: 12px; color: var(--muted); font-style: italic; }
 
-        .right-panel { padding: 14px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; min-height: 0; }
+        .right-panel { padding: 14px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; min-height: 0; }
         .right-panel::-webkit-scrollbar { width: 3px; }
         .right-panel::-webkit-scrollbar-thumb { background: var(--border); }
 
         .field-label { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted2); margin-bottom: 7px; }
 
-        .tuition-select {
+        .combobox-wrap { position: relative; }
+        .combobox-input {
           width: 100%; background: var(--surface2); border: 1px solid var(--border);
-          border-radius: 7px; color: var(--text); padding: 9px 30px 9px 11px;
+          border-radius: 7px; color: var(--text); padding: 9px 11px;
           font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none;
-          cursor: pointer; transition: border-color 0.15s; appearance: none;
-          background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-          background-repeat: no-repeat; background-position: right 11px center;
+          transition: border-color 0.15s;
         }
-        .tuition-select:focus { border-color: var(--accent); }
-        .tuition-select option { background: #1e1e1e; }
+        .combobox-input:focus { border-color: var(--accent); }
+        .combobox-input::placeholder { color: var(--muted); }
+        .combobox-input.has-value { color: var(--accent); font-weight: 500; }
+        .combobox-dropdown {
+          position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+          background: var(--surface); border: 1px solid var(--border);
+          border-radius: 7px; z-index: 100; max-height: 200px; overflow-y: auto;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .combobox-dropdown::-webkit-scrollbar { width: 3px; }
+        .combobox-dropdown::-webkit-scrollbar-thumb { background: var(--border); }
+        .combobox-option {
+          padding: 9px 12px; font-size: 13px; cursor: pointer;
+          transition: background 0.1s; border-bottom: 1px solid var(--border);
+        }
+        .combobox-option:last-child { border-bottom: none; }
+        .combobox-option:hover { background: var(--surface2); }
+        .combobox-option.is-selected { background: var(--accent-dim); color: var(--accent); font-weight: 500; }
+        .combobox-empty { padding: 10px 12px; font-size: 12px; color: var(--muted); font-style: italic; }
 
         .msg-preview {
           background: var(--surface2); border: 1px solid var(--border);
           border-left: 3px solid var(--accent); border-radius: 7px;
           padding: 11px 12px; font-size: 13px; line-height: 1.7; color: var(--text);
-          white-space: pre-wrap; max-height: 200px; overflow-y: auto;
+          white-space: pre-wrap; flex: 1; overflow-y: auto; min-height: 80px;
         }
         .msg-preview::-webkit-scrollbar { width: 3px; }
         .msg-preview::-webkit-scrollbar-thumb { background: var(--border); }
+        .msg-preview-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; }
         .msg-placeholder { color: var(--muted); font-style: italic; font-size: 12px; }
 
         .send-btn {
@@ -448,17 +471,35 @@ export default function Home() {
 
               <div>
                 <div className="field-label">Tuition ID</div>
-                <select
-                  className="tuition-select"
-                  value={selectedTuition?.id || ''}
-                  onChange={e => setSelectedTuition(tuitions.find(t => t.id === e.target.value) || null)}
-                >
-                  <option value="">— Select Tuition ID —</option>
-                  {tuitions.map(t => <option key={t.id} value={t.id}>{t.tuitionId}</option>)}
-                </select>
+                <div className="combobox-wrap">
+                  <input
+                    className={`combobox-input${selectedTuition && !tuitionOpen ? ' has-value' : ''}`}
+                    placeholder="Type to search tuition ID..."
+                    value={tuitionOpen ? tuitionSearch : (selectedTuition ? selectedTuition.tuitionId : '')}
+                    onFocus={() => { setTuitionOpen(true); setTuitionSearch(''); }}
+                    onBlur={() => setTimeout(() => setTuitionOpen(false), 150)}
+                    onChange={e => setTuitionSearch(e.target.value)}
+                  />
+                  {tuitionOpen && (
+                    <div className="combobox-dropdown">
+                      {filteredTuitions.length === 0
+                        ? <div className="combobox-empty">No results</div>
+                        : filteredTuitions.map(t => (
+                          <div
+                            key={t.id}
+                            className={`combobox-option${selectedTuition?.id === t.id ? ' is-selected' : ''}`}
+                            onMouseDown={() => { setSelectedTuition(t); setTuitionOpen(false); setTuitionSearch(''); }}
+                          >
+                            {t.tuitionId}
+                          </div>
+                        ))
+                      }
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
+              <div className="msg-preview-wrap">
                 <div className="field-label">Message</div>
                 {selectedTuition
                   ? <div className="msg-preview">{selectedTuition.message}</div>

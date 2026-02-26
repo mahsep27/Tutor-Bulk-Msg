@@ -195,7 +195,7 @@ export default function Home() {
 
         .columns {
           display: grid;
-          grid-template-columns: 260px 1fr 300px;
+          grid-template-columns: 260px 1fr 380px;
           flex: 1;
           overflow: hidden;
           min-height: 0;

@@ -911,8 +911,7 @@ export default function Home() {
                     <path d="M14 2L7 9M14 2L9.5 14L7 9M14 2L2 6.5L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   {(() => {
-                    const manualCount = manualInput.trim() ? manualInput.split(/[
-,]/).filter(n => n.trim()).length : 0;
+                    const manualCount = manualInput.trim() ? manualInput.split(/[\n,]/).filter(n => n.trim()).length : 0;
                     const total = selected.size + manualCount;
                     return total > 0 ? `Send to ${total} recipient${total > 1 ? 's' : ''}` : 'Select tutors & tuition';
                   })()}

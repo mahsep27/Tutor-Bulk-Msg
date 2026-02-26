@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       const r = recipients[i];
       const delaySeconds = i * DELAY_BETWEEN;
 
-      const response = await fetch('https://qstash.upstash.io/v2/publish/' + encodeURIComponent(`${SITE_URL}/api/send-one`), {
+      const response = await fetch(`https://qstash.upstash.io/v2/publish/${SITE_URL}/api/send-one`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${QSTASH_TOKEN}`,
